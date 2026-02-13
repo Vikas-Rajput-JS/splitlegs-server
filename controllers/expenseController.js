@@ -26,10 +26,13 @@ const addExpense = asyncHandler(async (req, res) => {
 
     const payerId = paidBy || req.user._id;
 
+    // De-duplicate members to prevent double-charging/double-splitting
+    const uniqueMembers = [...new Set(group.members.map(m => m.toString()))];
+
     let finalParticipants = [];
     if (splitType === 'all') {
-        const splitAmount = amount / group.members.length;
-        finalParticipants = group.members.map(memberId => ({
+        const splitAmount = amount / uniqueMembers.length;
+        finalParticipants = uniqueMembers.map(memberId => ({
             user: memberId,
             amount: splitAmount
         }));
@@ -37,8 +40,8 @@ const addExpense = asyncHandler(async (req, res) => {
         finalParticipants = participants;
     } else {
         // Fallback to split all if nothing specified
-        const splitAmount = amount / group.members.length;
-        finalParticipants = group.members.map(memberId => ({
+        const splitAmount = amount / uniqueMembers.length;
+        finalParticipants = uniqueMembers.map(memberId => ({
             user: memberId,
             amount: splitAmount
         }));

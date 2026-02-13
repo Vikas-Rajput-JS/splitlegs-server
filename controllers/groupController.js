@@ -8,8 +8,9 @@ const asyncHandler = require('../middleware/asyncHandler');
 const createGroup = asyncHandler(async (req, res) => {
     const { name, image, members } = req.body;
 
-    // Ensure the creator is included in members
-    const groupMembers = members ? [...new Set([...members, req.user._id])] : [req.user._id];
+    // Ensure the creator is included in members and de-duplicate correctly by converting to string
+    const memberStrings = (members || []).map(m => m.toString());
+    const groupMembers = [...new Set([...memberStrings, req.user._id.toString()])];
 
     const group = await Group.create({
         name,
@@ -31,7 +32,21 @@ const createGroup = asyncHandler(async (req, res) => {
 // @access  Private
 const getGroups = asyncHandler(async (req, res) => {
     const groups = await Group.find({ members: req.user._id }).populate('members', 'name email avatar');
-    res.json(groups);
+
+    // De-duplicate members if database has duplicates
+    const sanitizedGroups = groups.map(g => {
+        const groupObj = g.toObject();
+        const seen = new Set();
+        groupObj.members = (groupObj.members || []).filter(m => {
+            const id = m._id?.toString() || m.toString();
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        });
+        return groupObj;
+    });
+
+    res.json(sanitizedGroups);
 });
 
 // @desc    Get group details
@@ -41,8 +56,17 @@ const getGroupById = asyncHandler(async (req, res) => {
     const group = await Group.findById(req.params.id).populate('members', 'name email avatar');
 
     if (group) {
-        if (group.members.some(m => m._id.toString() === req.user._id.toString())) {
-            res.json(group);
+        const groupObj = group.toObject();
+        const seen = new Set();
+        groupObj.members = (groupObj.members || []).filter(m => {
+            const id = m._id?.toString() || m.toString();
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        });
+
+        if (groupObj.members.some(m => (m._id?.toString() || m.toString()) === req.user._id.toString())) {
+            res.json(groupObj);
         } else {
             res.status(401);
             throw new Error('Not authorized to view this group');
