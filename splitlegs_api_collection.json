@@ -231,7 +231,7 @@
             "name": "Expenses",
             "item": [
                 {
-                    "name": "Add Expense",
+                    "name": "Add Expense (Split All)",
                     "request": {
                         "auth": {
                             "type": "bearer",
@@ -247,7 +247,43 @@
                         "header": [],
                         "body": {
                             "mode": "raw",
-                            "raw": "{\n    \"description\": \"Dinner\",\n    \"amount\": 100,\n    \"groupId\": \"{{groupId}}\",\n    \"category\": \"Food\"\n}",
+                            "raw": "{\n    \"description\": \"Dinner\",\n    \"amount\": 100,\n    \"groupId\": \"{{groupId}}\",\n    \"category\": \"Food\",\n    \"splitType\": \"all\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/expenses",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "expenses"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Add Expense (Selected Members)",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"description\": \"Coffee\",\n    \"amount\": 15,\n    \"groupId\": \"{{groupId}}\",\n    \"category\": \"Drinks\",\n    \"splitType\": \"selected\",\n    \"participants\": [\n        {\n            \"user\": \"USER_ID_1\",\n            \"amount\": 10\n        },\n        {\n            \"user\": \"USER_ID_2\",\n            \"amount\": 5\n        }\n    ],\n    \"paidBy\": \"USER_ID_1\"\n}",
                             "options": {
                                 "raw": {
                                     "language": "json"
@@ -295,6 +331,41 @@
                             "variable": [
                                 {
                                     "key": "groupId",
+                                    "value": ""
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Settle Expense",
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/expenses/:id/settle",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "expenses",
+                                ":id",
+                                "settle"
+                            ],
+                            "variable": [
+                                {
+                                    "key": "id",
                                     "value": ""
                                 }
                             ]

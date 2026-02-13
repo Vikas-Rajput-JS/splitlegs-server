@@ -6,7 +6,16 @@ const asyncHandler = require('../middleware/asyncHandler');
 // @route   POST /api/expenses
 // @access  Private
 const addExpense = asyncHandler(async (req, res) => {
-    const { description, amount, groupId, participants, category, date } = req.body;
+    const {
+        description,
+        amount,
+        groupId,
+        participants,
+        category,
+        date,
+        paidBy,
+        splitType // 'all' or 'selected'
+    } = req.body;
 
     const group = await Group.findById(groupId);
 
@@ -15,9 +24,19 @@ const addExpense = asyncHandler(async (req, res) => {
         throw new Error('Group not found');
     }
 
-    // Default split if participants not provided (split equally among all members)
-    let finalParticipants = participants;
-    if (!participants || participants.length === 0) {
+    const payerId = paidBy || req.user._id;
+
+    let finalParticipants = [];
+    if (splitType === 'all') {
+        const splitAmount = amount / group.members.length;
+        finalParticipants = group.members.map(memberId => ({
+            user: memberId,
+            amount: splitAmount
+        }));
+    } else if (participants && participants.length > 0) {
+        finalParticipants = participants;
+    } else {
+        // Fallback to split all if nothing specified
         const splitAmount = amount / group.members.length;
         finalParticipants = group.members.map(memberId => ({
             user: memberId,
@@ -28,7 +47,7 @@ const addExpense = asyncHandler(async (req, res) => {
     const expense = await Expense.create({
         description,
         amount,
-        paidBy: req.user._id,
+        paidBy: payerId,
         groupId,
         participants: finalParticipants,
         category,
@@ -102,9 +121,26 @@ const deleteExpense = asyncHandler(async (req, res) => {
     }
 });
 
+// @desc    Settle/Mark an expense as paid
+// @route   PUT /api/expenses/:id/settle
+// @access  Private
+const settleExpense = asyncHandler(async (req, res) => {
+    const expense = await Expense.findById(req.params.id);
+
+    if (expense) {
+        expense.isPaid = true;
+        const updatedExpense = await expense.save();
+        res.json(updatedExpense);
+    } else {
+        res.status(404);
+        throw new Error('Expense not found');
+    }
+});
+
 module.exports = {
     addExpense,
     getMyExpenses,
     getGroupExpenses,
     deleteExpense,
+    settleExpense,
 };
