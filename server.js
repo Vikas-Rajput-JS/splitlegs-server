@@ -23,6 +23,9 @@ connectDB();
 
 const app = express();
 
+// Trust proxy for Render
+app.set('trust proxy', 1);
+
 // Body parser
 app.use(express.json());
 
