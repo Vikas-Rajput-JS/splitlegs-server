@@ -6,17 +6,33 @@ const asyncHandler = require('../middleware/asyncHandler');
 // @route   POST /api/groups
 // @access  Private
 const createGroup = asyncHandler(async (req, res) => {
-    const { name, image, members } = req.body;
+    const { name, image } = req.body;
 
-    // Ensure the creator is included in members and de-duplicate correctly by converting to string
-    const memberStrings = (members || []).map(m => m.toString());
-    const groupMembers = [...new Set([...memberStrings, req.user._id.toString()])];
+    // Invitation code generation (6 chars alphanumeric)
+    const generateInviteCode = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < 6; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    };
+
+    let inviteCode = generateInviteCode();
+    
+    // Check for collisions (very unlikely with 36^6 but good practice)
+    let exists = await Group.findOne({ inviteCode });
+    while (exists) {
+        inviteCode = generateInviteCode();
+        exists = await Group.findOne({ inviteCode });
+    }
 
     const group = await Group.create({
         name,
         image,
-        members: groupMembers,
+        members: [req.user._id],
         createdBy: req.user._id,
+        inviteCode
     });
 
     if (group) {
@@ -97,9 +113,33 @@ const deleteGroup = asyncHandler(async (req, res) => {
     }
 });
 
+// @desc    Join a group via invite code
+// @route   POST /api/groups/join/:inviteCode
+// @access  Private
+const joinGroupByInvite = asyncHandler(async (req, res) => {
+    const { inviteCode } = req.params;
+    const group = await Group.findOne({ inviteCode });
+
+    if (!group) {
+        res.status(404);
+        throw new Error('Invalid invitation code');
+    }
+
+    if (group.members.includes(req.user._id)) {
+        res.status(400);
+        throw new Error('You are already a member of this group');
+    }
+
+    group.members.push(req.user._id);
+    await group.save();
+
+    res.json({ message: 'Joined group successfully', group });
+});
+
 module.exports = {
     createGroup,
     getGroups,
     getGroupById,
     deleteGroup,
+    joinGroupByInvite
 };

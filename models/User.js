@@ -20,6 +20,10 @@ const userSchema = mongoose.Schema(
             type: String,
             default: 'https://i.pravatar.cc/150?u=default',
         },
+        pushToken: {
+            type: String,
+            default: '',
+        },
     },
     {
         timestamps: true,

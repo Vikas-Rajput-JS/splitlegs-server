@@ -21,6 +21,10 @@ const groupSchema = mongoose.Schema(
             required: true,
             ref: 'User',
         },
+        inviteCode: {
+            type: String,
+            unique: true,
+        },
     },
     {
         timestamps: true,

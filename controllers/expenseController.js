@@ -1,6 +1,8 @@
 const Expense = require('../models/Expense');
 const Group = require('../models/Group');
+const User = require('../models/User');
 const asyncHandler = require('../middleware/asyncHandler');
+const { sendPushNotifications } = require('../services/notificationService');
 
 // @desc    Add an expense to a group
 // @route   POST /api/expenses
@@ -58,6 +60,24 @@ const addExpense = asyncHandler(async (req, res) => {
     });
 
     if (expense) {
+        // Send push notifications to all other group members
+        const otherMembers = uniqueMembers.filter(m => m !== req.user._id.toString());
+        const membersWithTokens = await User.find({
+            _id: { $in: otherMembers },
+            pushToken: { $exists: true, $ne: '' }
+        });
+
+        const tokens = membersWithTokens.map(u => u.pushToken);
+        
+        if (tokens.length > 0) {
+            sendPushNotifications(
+                tokens,
+                `New Expense: ${group.name}`,
+                `${req.user.name} added "${description}" for ₹${amount}`,
+                { groupId: group._id.toString(), expenseId: expense._id.toString() }
+            );
+        }
+
         res.status(201).json(expense);
     } else {
         res.status(400);
